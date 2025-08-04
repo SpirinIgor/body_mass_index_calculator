@@ -34,6 +34,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cardWidth = MediaQuery.of(context).size.width * 0.9;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: Center(
@@ -51,7 +53,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 20),
               Container(
-                width: MediaQuery.of(context).size.width * 0.9,
+                width: cardWidth,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -90,7 +92,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const RegistrationScreen(),
+                            builder: (context) => RegistrationScreen(),
                           ),
                         );
                       },
@@ -107,21 +109,21 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              SizedBox(
+                width: cardWidth, // Установка такой же ширины как у карточки
+                child: ElevatedButton(
+                  onPressed: _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4CAF50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 50,
-                    vertical: 15,
+                  child: const Text(
+                    'ВОЙТИ',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
-                ),
-                child: const Text(
-                  'ВОЙТИ',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
               if (_showError)
