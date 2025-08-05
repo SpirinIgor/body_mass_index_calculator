@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'profile_screen.dart';
 
 class BMIScreen extends StatefulWidget {
@@ -15,9 +16,11 @@ class _BMIScreenState extends State<BMIScreen> {
   String? _recommendation;
   bool _showError = false;
   bool _showResult = false;
+  bool _isLoading = false;
   int _currentIndex = 0;
+  final _supabase = Supabase.instance.client;
 
-  void _calculateBMI() {
+  Future<void> _calculateAndSaveBMI() async {
     if (_heightController.text.isEmpty || _weightController.text.isEmpty) {
       setState(() {
         _showError = true;
@@ -37,38 +40,64 @@ class _BMIScreenState extends State<BMIScreen> {
       return;
     }
 
-    final bmi = weight / ((height / 100) * (height / 100));
-    String recommendation;
-
-    if (bmi < 16) {
-      recommendation =
-          'Выраженный дефицит массы тела. Советуем набрать вес для здоровья.';
-    } else if (bmi < 18.5) {
-      recommendation =
-          'Недостаточная масса тела. Рекомендуется увеличить массу тела.';
-    } else if (bmi < 25) {
-      recommendation =
-          'Норма. Ваш вес в здоровом диапазоне — поддерживайте его!';
-    } else if (bmi < 30) {
-      recommendation =
-          'Избыточная масса тела или предожирение. Желательно снизить вес.';
-    } else if (bmi < 35) {
-      recommendation =
-          'Ожирение. Рекомендуется уменьшить вес под контролем специалиста.';
-    } else if (bmi < 40) {
-      recommendation =
-          'Ожирение резкое. Необходимо снижение веса с медицинской поддержкой.';
-    } else {
-      recommendation =
-          'Очень резкое ожирение. Требуется срочная коррекция веса.';
-    }
-
     setState(() {
-      _bmiResult = double.parse(bmi.toStringAsFixed(2));
-      _recommendation = recommendation;
-      _showError = false;
-      _showResult = true;
+      _isLoading = true;
     });
+
+    try {
+      final bmi = weight / ((height / 100) * (height / 100));
+      String recommendation;
+
+      if (bmi < 16) {
+        recommendation =
+            'Выраженный дефицит массы тела. Советуем набрать вес для здоровья.';
+      } else if (bmi < 18.5) {
+        recommendation =
+            'Недостаточная масса тела. Рекомендуется увеличить массу тела.';
+      } else if (bmi < 25) {
+        recommendation =
+            'Норма. Ваш вес в здоровом диапазоне — поддерживайте его!';
+      } else if (bmi < 30) {
+        recommendation =
+            'Избыточная масса тела или предожирение. Желательно снизить вес.';
+      } else if (bmi < 35) {
+        recommendation =
+            'Ожирение. Рекомендуется уменьшить вес под контролем специалиста.';
+      } else if (bmi < 40) {
+        recommendation =
+            'Ожирение резкое. Необходимо снижение веса с медицинской поддержкой.';
+      } else {
+        recommendation =
+            'Очень резкое ожирение. Требуется срочная коррекция веса.';
+      }
+
+      // Сохраняем данные в Supabase
+      final user = _supabase.auth.currentUser;
+      if (user != null) {
+        await _supabase.from('body_mass_index_calculations').insert({
+          'height': height.round(),
+          'weight': weight.round(),
+          'body_mass_index': double.parse(bmi.toStringAsFixed(2)),
+          'recommendation': recommendation,
+          'user_id': user.id,
+        });
+      }
+
+      setState(() {
+        _bmiResult = double.parse(bmi.toStringAsFixed(2));
+        _recommendation = recommendation;
+        _showError = false;
+        _showResult = true;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка сохранения данных: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -97,12 +126,12 @@ class _BMIScreenState extends State<BMIScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      spreadRadius: 2,
+                      color: Colors.black12,
+                      spreadRadius: 1,
                       blurRadius: 5,
-                      offset: const Offset(0, 3),
+                      offset: Offset(0, 3),
                     ),
                   ],
                 ),
@@ -144,7 +173,7 @@ class _BMIScreenState extends State<BMIScreen> {
               SizedBox(
                 width: cardWidth,
                 child: ElevatedButton(
-                  onPressed: _calculateBMI,
+                  onPressed: _isLoading ? null : _calculateAndSaveBMI,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),
                     shape: RoundedRectangleBorder(
@@ -152,10 +181,19 @@ class _BMIScreenState extends State<BMIScreen> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: const Text(
-                    'РАССЧИТАТЬ',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'РАССЧИТАТЬ',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
                 ),
               ),
               if (_showError)
